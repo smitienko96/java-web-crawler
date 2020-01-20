@@ -4,7 +4,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
-import org.asynchttpclient.uri.Uri;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

@@ -1,7 +1,6 @@
 package com.smitie.crawler;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
