@@ -21,7 +21,7 @@ public class StringBasedHtmlUrlExtractor {
      * @return list of urls
      */
     public static List<String> extract(final String html) {
-        List<String> result = new LinkedList<>();
+        List<String> result = new ArrayList<>(70);
         int pos, start = 0;
         while ((pos = html.indexOf(HREF, start)) != -1) {
             int from = pos + HREF.length();
