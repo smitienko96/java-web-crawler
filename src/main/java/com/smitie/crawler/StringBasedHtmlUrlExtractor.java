@@ -24,13 +24,9 @@ public class StringBasedHtmlUrlExtractor {
         List<String> result = new LinkedList<>();
         int pos, start = 0;
         while ((pos = html.indexOf(HREF, start)) != -1) {
-
             int from = pos + HREF.length();
-
             int to = html.indexOf(LINK_CLOSING_QUOTE, from);
-
             result.add(html.substring(from, to));
-
             start = to;
         }
         return result;

@@ -16,8 +16,8 @@ public class CrawlerConfig {
     public final int httpClientRequestTimeout;
     public final int threadPoolSize;
     public final int allowedServerErrorsPercentage;
-    public final int maxRunningClientThreads;
     public final int httpClientHandshakeTimeout;
+    public final int httpClientMaxConnections;
 
 
     public CrawlerConfig(final Properties properties) {
@@ -27,7 +27,7 @@ public class CrawlerConfig {
         httpClientReadTimeout = Integer.parseInt(properties.getProperty("httpClientReadTimeout"));
         httpClientRequestTimeout = Integer.parseInt(properties.getProperty("httpClientRequestTimeout"));
         allowedServerErrorsPercentage = Integer.parseInt(properties.getProperty("allowedServerErrorsPercentage"));
-        maxRunningClientThreads = Integer.parseInt(properties.getProperty("maxRunningClientThreads"));
         httpClientHandshakeTimeout = Integer.parseInt(properties.getProperty("httpClientHandshakeTimeout"));
+        httpClientMaxConnections = Integer.parseInt(properties.getProperty("httpClientMaxConnections"));
     }
 }

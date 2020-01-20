@@ -32,10 +32,10 @@ public class SimpleWebCrawler implements Crawler {
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Queue<String> urlsToProcess = new ConcurrentLinkedQueue<>();
     private final AtomicInteger internalServerErrorsNumber = new AtomicInteger(0);
+    private final AtomicInteger currentClientConnectionsCount = new AtomicInteger(0);
     private final Set<String> visitedUrls = ConcurrentHashMap.newKeySet();
     private final int allowedServerErrorsPercentage;
-    private final AtomicInteger runningClientThreads = new AtomicInteger(0);
-    private final int maxRunningClientThreads;
+    private final int maxConnections;
 
     public SimpleWebCrawler(final CrawlerConfig crawlerConfig) {
         int poolSize = crawlerConfig.threadPoolSize == 0 ? Runtime.getRuntime().availableProcessors() : crawlerConfig.threadPoolSize;
@@ -43,7 +43,7 @@ public class SimpleWebCrawler implements Crawler {
         this.asyncClient = configureClient(crawlerConfig);
         this.allowedServerErrorsPercentage = crawlerConfig.allowedServerErrorsPercentage;
         this.urlsToProcess.add(crawlerConfig.rootUrl);
-        this.maxRunningClientThreads = crawlerConfig.maxRunningClientThreads;
+        this.maxConnections = crawlerConfig.httpClientMaxConnections;
     }
 
     /**
@@ -60,13 +60,15 @@ public class SimpleWebCrawler implements Crawler {
             if (baseUrl == null || visitedUrls.contains(baseUrl)) {
                 continue;
             }
-            if (runningClientThreads.get() >= maxRunningClientThreads) {
+            if (currentClientConnectionsCount.get() >= maxConnections){
                 continue;
             }
             visitedUrls.add(baseUrl);
-            runningClientThreads.incrementAndGet();
+            currentClientConnectionsCount.incrementAndGet();
             processUrl(baseUrl);
         }
+        asyncClient.close();
+        threadPoolExecutor.shutdown();
         long duration = currentTimeMillis() - startTime;
         return new CrawlerReport(new HashSet<>(visitedUrls), duration, internalServerErrorsNumber.get());
     }
@@ -80,11 +82,11 @@ public class SimpleWebCrawler implements Crawler {
     private void processUrl(final String url) {
         log.info("sending request to {}", url);
         asyncClient
-                .prepareGet(String.valueOf(Uri.create(url)))
+                .prepareGet(url)
                 .execute()
                 .toCompletableFuture()
                 .thenAcceptAsync(resp -> {
-                    runningClientThreads.decrementAndGet();
+                    currentClientConnectionsCount.decrementAndGet();
                     if (resp == null) {
                         return;
                     }
@@ -101,10 +103,12 @@ public class SimpleWebCrawler implements Crawler {
                             .filter(s -> !visitedUrls.contains(s))
                             .forEach(urlsToProcess::add);
                 }, threadPoolExecutor)
-                .whenComplete((__, th) -> log.info("Crawler current state: \nurls to process queue size: {} \n" +
+                .whenComplete((__, th) -> log.info("Crawler state after visiting {}: \n" +
+                                "urls to process: {} \n" +
                                 "visited urls: {} \n" +
-                                "client active connections: {}"
-                        , urlsToProcess.size(), visitedUrls.size(), asyncClient.getClientStats().getTotalActiveConnectionCount()))
+                                "client active connections: {} \n" +
+                                "client idle connections: {} \n",
+                        url, urlsToProcess.size(), visitedUrls.size(), asyncClient.getClientStats().getTotalActiveConnectionCount(), asyncClient.getClientStats().getTotalIdleConnectionCount()))
                 .exceptionally(ex -> {
                     log.error("Exception while processing url " + url, ex);
                     return null;
@@ -112,7 +116,7 @@ public class SimpleWebCrawler implements Crawler {
     }
 
     /**
-     * Checks if response from the server
+     * Checks if a response from the server indicates an internal server error.
      *
      * @param resp response
      * @return result
@@ -129,8 +133,8 @@ public class SimpleWebCrawler implements Crawler {
      */
     private AsyncHttpClient configureClient(final CrawlerConfig crawlerConfig) {
         return asyncHttpClient(
-                config()
-                        .setIoThreadsCount(300)
+                config().setMaxConnections(crawlerConfig.httpClientMaxConnections)
+                        .setKeepAlive(true)
                         .setFollowRedirect(true)
                         .setConnectTimeout(crawlerConfig.httpClientConnectTimeout)
                         .setRequestTimeout(crawlerConfig.httpClientRequestTimeout)
@@ -161,7 +165,7 @@ public class SimpleWebCrawler implements Crawler {
         if (serverErrorPercentageExceeded()) {
             return true;
         }
-        return runningClientThreads.get() == 0 && urlsToProcess.isEmpty()
+        return currentClientConnectionsCount.get() == 0 && urlsToProcess.isEmpty()
                 && threadPoolExecutor.getActiveCount() == 0 && threadPoolExecutor.getQueue().isEmpty();
     }
 

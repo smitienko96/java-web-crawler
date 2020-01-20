@@ -14,5 +14,4 @@ public class CrawlerReport {
     private Set<String> visitedUrls;
     private Long executionTime;
     private int serverErrorsNumber;
-
 }

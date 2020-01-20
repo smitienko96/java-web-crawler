@@ -18,7 +18,7 @@ public class Main {
         int serverErrorsNumber = report.getServerErrorsNumber();
         int visitedUrlsNumber = report.getVisitedUrls().size();
         Long executionTime = report.getExecutionTime();
-        log.info("Crawler has finished: visited {} urls in {} milliseconds with {} internal server errors", visitedUrlsNumber, executionTime, serverErrorsNumber);
+        log.info("Crawler has finished: visited {} urls in {} milliseconds with {} internal server error(s)", visitedUrlsNumber, executionTime, serverErrorsNumber);
     }
 
 

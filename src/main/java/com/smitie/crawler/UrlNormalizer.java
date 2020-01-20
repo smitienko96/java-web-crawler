@@ -62,7 +62,7 @@ public class UrlNormalizer {
      */
     private static String cutRoot(final String input) {
         Uri url = Uri.create(input);
-        String port = (url.getPort() == -1 ? "" : ":" + url.getPort());
+        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
         return url.getScheme() + "://" + url.getHost() + port;
     }
 }
