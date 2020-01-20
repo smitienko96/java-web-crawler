@@ -6,15 +6,13 @@ import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
 import org.asynchttpclient.uri.Uri;
 
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static java.lang.System.currentTimeMillis;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
@@ -60,7 +58,7 @@ public class SimpleWebCrawler implements Crawler {
             if (baseUrl == null || visitedUrls.contains(baseUrl)) {
                 continue;
             }
-            if (currentClientConnectionsCount.get() >= maxConnections){
+            if (currentClientConnectionsCount.get() >= maxConnections) {
                 continue;
             }
             visitedUrls.add(baseUrl);
@@ -94,14 +92,16 @@ public class SimpleWebCrawler implements Crawler {
                         internalServerErrorsNumber.getAndIncrement();
                         return;
                     }
-                    StringBasedHtmlUrlExtractor
+                    List<String> extractedUrls = StringBasedHtmlUrlExtractor
                             .extract(resp.getResponseBody())
                             .stream()
                             .map(s -> UrlNormalizer.normalize(s, url))
                             .filter(Optional::isPresent)
                             .map(Optional::get)
                             .filter(s -> !visitedUrls.contains(s))
-                            .forEach(urlsToProcess::add);
+                            .collect(Collectors.toList());
+                    log.info("Extracted {} url(s) from {}", extractedUrls.size(), url);
+                    urlsToProcess.addAll(extractedUrls);
                 }, threadPoolExecutor)
                 .whenComplete((__, th) -> log.info("Crawler state after visiting {}: \n" +
                                 "urls to process: {} \n" +
